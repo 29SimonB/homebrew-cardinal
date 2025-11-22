@@ -1,0 +1,82 @@
+name: Update Cardinal cask
+
+on:
+  schedule:
+    # Every day at 06:00 UTC – adjust if you want
+    - cron: "0 6 * * *"
+  # Allow manual runs from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  update-cask:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout tap repo
+        uses: actions/checkout@v4
+
+      - name: Get latest Cardinal version from GitHub
+        id: latest
+        run: |
+          LATEST_VERSION=$(python - << 'PY'
+import json, urllib.request
+
+url = "https://api.github.com/repos/cardisoft/cardinal/releases/latest"
+with urllib.request.urlopen(url) as resp:
+    data = json.loads(resp.read().decode())
+tag = data["tag_name"]  # e.g. "v0.1.10"
+print(tag.lstrip("v"))
+PY
+          )
+          echo "version=$LATEST_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Get current cask version
+        id: current
+        run: |
+          CURR_VERSION=$(grep 'version "' Casks/cardinal-file-search.rb | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "version=$CURR_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Check if up to date
+        if: steps.latest.outputs.version == steps.current.outputs.version
+        run: |
+          echo "Cask already up to date (version ${{ steps.current.outputs.version }})"
+          exit 0
+
+      - name: Update cask file to latest version
+        if: steps.latest.outputs.version != steps.current.outputs.version
+        run: |
+          NEW_VER="${{ steps.latest.outputs.version }}"
+          CASK_FILE="Casks/cardinal-file-search.rb"
+
+          echo "Updating cask from ${{ steps.current.outputs.version }} to ${NEW_VER}"
+
+          DMG_URL="https://github.com/cardisoft/cardinal/releases/download/v${NEW_VER}/Cardinal_${NEW_VER}_aarch64.dmg"
+          echo "Downloading ${DMG_URL}"
+          curl -L -o /tmp/Cardinal.dmg "$DMG_URL"
+
+          SHA=$(shasum -a 256 /tmp/Cardinal.dmg | awk '{print $1}')
+          echo "New SHA256: ${SHA}"
+
+          # Update version line
+          sed -i '' -E "s/version \"[0-9\\.]+\"/version \"${NEW_VER}\"/" "$CASK_FILE"
+
+          # Update sha256 line
+          sed -i '' -E "s/sha256 \"[a-f0-9]+\"/sha256 \"${SHA}\"/" "$CASK_FILE"
+
+          echo "Updated cask file:"
+          cat "$CASK_FILE"
+
+      - name: Commit and push changes
+        if: steps.latest.outputs.version != steps.current.outputs.version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git add Casks/cardinal-file-search.rb
+          git commit -m "Update cardinal-file-search to v${{ steps.latest.outputs.version }}"
+          git push
