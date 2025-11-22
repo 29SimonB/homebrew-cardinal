@@ -19,14 +19,14 @@ jobs:
         id: latest
         run: |
           LATEST_VERSION=$(python - << 'PY'
-import json, urllib.request
+          import json, urllib.request
 
-url = "https://api.github.com/repos/cardisoft/cardinal/releases/latest"
-with urllib.request.urlopen(url) as resp:
-    data = json.loads(resp.read().decode())
-tag = data["tag_name"]  # e.g. "v0.1.10"
-print(tag.lstrip("v"))
-PY
+          url = "https://api.github.com/repos/cardisoft/cardinal/releases/latest"
+          with urllib.request.urlopen(url) as resp:
+              data = json.loads(resp.read().decode())
+          tag = data["tag_name"]  # e.g. "v0.1.10"
+          print(tag.lstrip("v"))
+          PY
           )
           echo "version=$LATEST_VERSION" >> "$GITHUB_OUTPUT"
 
@@ -40,7 +40,6 @@ PY
         if: steps.latest.outputs.version == steps.current.outputs.version
         run: |
           echo "Cask already up to date (version ${{ steps.current.outputs.version }})"
-          exit 0
 
       - name: Update cask file to latest version
         if: steps.latest.outputs.version != steps.current.outputs.version
