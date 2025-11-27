@@ -1,6 +1,6 @@
 cask "cardinal-file-search" do
-  version "0.1.11"
-  sha256 "e9784877e3d015a644ffbfa82b31cef21f7c38448df2bbccc7122a106a5852c5"
+  version "0.1.12"
+  sha256 "bb488ec060ec0d91feb35162d3b675e0770980b9ae320251e1b2b2d7c48609cf"
 
   url "https://github.com/cardisoft/cardinal/releases/download/v#{version}/Cardinal_#{version}_aarch64.dmg",
       verified: "github.com/cardisoft/cardinal/"
